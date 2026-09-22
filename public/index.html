@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pokedex - Built on PokeAPI</title>
+    <meta
+      name="description"
+      content="A full stack Pokedex built on PokeAPI v2: live search, type and stat filters, stat charts, evolution chains, a team builder, and a Who's That Pokemon mini-game."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23f2f2f2' stroke='%23111' stroke-width='6'/%3E%3Cpath d='M4 50h92' stroke='%23111' stroke-width='8'/%3E%3Cpath d='M4 50a46 46 0 0 1 92 0z' fill='%23e3350d'/%3E%3Ccircle cx='50' cy='50' r='15' fill='%23f2f2f2' stroke='%23111' stroke-width='7'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+    <script type="module" src="/js/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#results">Skip to results</a>
+
+    <header class="app-header">
+      <div class="app-header__inner">
+        <div class="brand">
+          <span class="brand__ball" aria-hidden="true"></span>
+          <div>
+            <h1 class="brand__title">Pokedex</h1>
+            <p class="brand__subtitle">Live data from PokeAPI v2</p>
+          </div>
+        </div>
+
+        <div class="app-header__actions">
+          <label class="switch" title="Show shiny sprites everywhere">
+            <input type="checkbox" id="global-shiny" />
+            <span class="switch__track" aria-hidden="true"></span>
+            <span class="switch__label">Shiny</span>
+          </label>
+
+          <button type="button" class="btn btn--ghost" id="open-quiz">
+            <span aria-hidden="true">?</span> Who&rsquo;s That Pokemon
+          </button>
+
+          <button type="button" class="btn btn--primary" id="open-team" aria-haspopup="dialog">
+            My Team <span class="badge" id="team-count">0</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="loadbar" id="loadbar" hidden>
+        <div class="loadbar__fill" id="loadbar-fill"></div>
+        <span class="loadbar__text" id="loadbar-text"></span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- ------------------------------ Filters ------------------------------ -->
+      <aside class="filters" aria-label="Filters">
+        <div class="filters__group">
+          <label class="field">
+            <span class="field__label">Search</span>
+            <input
+              type="search"
+              id="search-input"
+              class="input"
+              placeholder="Name or Pokedex number, e.g. char or 25"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+        </div>
+
+        <div class="filters__group">
+          <span class="field__label" id="gen-label">Generation</span>
+          <div class="gen-tabs" id="gen-tabs" role="group" aria-labelledby="gen-label"></div>
+        </div>
+
+        <div class="filters__group">
+          <div class="filters__grouphead">
+            <span class="field__label" id="type-label">Types</span>
+            <label class="checkbox" title="Require every selected type on the same Pokemon">
+              <input type="checkbox" id="match-all-types" />
+              <span>Match all</span>
+            </label>
+          </div>
+          <div class="type-grid" id="type-grid" role="group" aria-labelledby="type-label"></div>
+        </div>
+
+        <details class="filters__group filters__details" id="stat-panel">
+          <summary>
+            <span class="field__label">Base stats</span>
+            <span class="pill pill--muted" id="stat-active-count" hidden></span>
+          </summary>
+          <div class="stat-sliders" id="stat-sliders"></div>
+        </details>
+
+        <div class="filters__group filters__footer">
+          <button type="button" class="btn btn--ghost btn--block" id="reset-filters">Reset all filters</button>
+        </div>
+      </aside>
+
+      <!-- ------------------------------ Results ------------------------------ -->
+      <section class="results" id="results">
+        <div class="results__bar">
+          <p class="results__count" id="result-count" role="status" aria-live="polite">Loading Pokemon&hellip;</p>
+
+          <label class="field field--inline">
+            <span class="field__label">Sort</span>
+            <select class="input input--select" id="sort-select">
+              <option value="id-asc">Pokedex number</option>
+              <option value="id-desc">Pokedex number (desc)</option>
+              <option value="name-asc">Name A-Z</option>
+              <option value="name-desc">Name Z-A</option>
+              <option value="total-desc">Stat total (high to low)</option>
+              <option value="total-asc">Stat total (low to high)</option>
+              <option value="hp-desc">HP</option>
+              <option value="attack-desc">Attack</option>
+              <option value="defense-desc">Defense</option>
+              <option value="special-attack-desc">Sp. Atk</option>
+              <option value="special-defense-desc">Sp. Def</option>
+              <option value="speed-desc">Speed</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="chip-row" id="active-filters" hidden></div>
+
+        <p class="notice notice--error" id="error-banner" hidden></p>
+
+        <div class="grid" id="grid"></div>
+
+        <p class="empty" id="empty-state" hidden>
+          No Pokemon match these filters.<br />
+          <button type="button" class="btn btn--ghost" id="empty-reset">Clear filters</button>
+        </p>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>
+        Data from <a href="https://pokeapi.co" target="_blank" rel="noopener">PokeAPI v2</a>, cached server-side per
+        their <a href="https://pokeapi.co/docs/v2#fairuse" target="_blank" rel="noopener">fair use policy</a>. Pokemon
+        is a trademark of Nintendo, Game Freak, and Creatures Inc. This is a non-commercial student project.
+      </p>
+    </footer>
+
+    <!-- --------------------------- Detail modal --------------------------- -->
+    <dialog class="modal modal--detail" id="detail-modal" aria-labelledby="detail-name">
+      <div class="modal__loading" id="detail-loading">Loading&hellip;</div>
+
+      <article class="detail" id="detail-body" hidden>
+        <button type="button" class="modal__close" id="detail-close" aria-label="Close">&times;</button>
+
+        <header class="detail__head">
+          <div class="detail__art">
+            <img id="detail-image" alt="" width="300" height="300" />
+            <div class="detail__artactions">
+              <button type="button" class="btn btn--icon" id="detail-shiny" aria-pressed="false" title="Toggle shiny form">
+                Shiny
+              </button>
+              <button type="button" class="btn btn--icon" id="detail-cry" title="Play this Pokemon's cry">
+                Play cry
+              </button>
+            </div>
+            <p class="detail__crynote" id="detail-crynote" hidden></p>
+          </div>
+
+          <div class="detail__summary">
+            <p class="detail__dexno" id="detail-dexno"></p>
+            <h2 class="detail__name" id="detail-name"></h2>
+            <p class="detail__genus" id="detail-genus"></p>
+            <div class="type-row" id="detail-types"></div>
+            <p class="detail__flavor" id="detail-flavor"></p>
+
+            <dl class="detail__facts" id="detail-facts"></dl>
+
+            <button type="button" class="btn btn--primary" id="detail-catch">Catch</button>
+          </div>
+        </header>
+
+        <section class="detail__section">
+          <div class="detail__sectionhead">
+            <h3>Base stats</h3>
+            <div class="segmented" role="group" aria-label="Chart type">
+              <button type="button" class="segmented__btn is-active" data-chart="radar">Radar</button>
+              <button type="button" class="segmented__btn" data-chart="bar">Bar</button>
+            </div>
+          </div>
+          <div class="chartwrap"><canvas id="detail-chart" aria-label="Base stat chart"></canvas></div>
+        </section>
+
+        <section class="detail__section">
+          <h3>Evolution chain</h3>
+          <div class="evo" id="detail-evolution"></div>
+        </section>
+      </article>
+    </dialog>
+
+    <!-- ---------------------------- Team modal ---------------------------- -->
+    <dialog class="modal modal--team" id="team-modal" aria-labelledby="team-title">
+      <button type="button" class="modal__close" id="team-close" aria-label="Close">&times;</button>
+      <h2 id="team-title">My Team <span class="muted" id="team-size">(0/6)</span></h2>
+      <p class="muted">Click <strong>Catch</strong> on any Pokemon to add it. Your team is saved in this browser.</p>
+
+      <div class="team-slots" id="team-slots"></div>
+
+      <section class="team-analysis" id="team-analysis" hidden>
+        <h3>Combined defensive coverage</h3>
+        <p class="muted">
+          How an incoming attack of each type fares against your whole party, multiplying every member&rsquo;s type
+          matchups.
+        </p>
+        <div class="coverage" id="team-coverage"></div>
+      </section>
+
+      <div class="team-actions">
+        <button type="button" class="btn btn--ghost" id="team-clear">Release all</button>
+      </div>
+    </dialog>
+
+    <!-- ---------------------------- Quiz modal ---------------------------- -->
+    <dialog class="modal modal--quiz" id="quiz-modal" aria-labelledby="quiz-title">
+      <button type="button" class="modal__close" id="quiz-close" aria-label="Close">&times;</button>
+      <h2 id="quiz-title">Who&rsquo;s That Pokemon?</h2>
+
+      <div class="quiz__scores">
+        <div class="quiz__score"><span id="quiz-score">0</span><small>Score</small></div>
+        <div class="quiz__score"><span id="quiz-streak">0</span><small>Streak</small></div>
+        <div class="quiz__score"><span id="quiz-best">0</span><small>Best</small></div>
+      </div>
+
+      <label class="field field--inline quiz__gen">
+        <span class="field__label">Pool</span>
+        <select class="input input--select" id="quiz-gen"></select>
+      </label>
+
+      <div class="quiz__stage">
+        <img id="quiz-image" class="quiz__image is-hidden" alt="Silhouette of a mystery Pokemon" width="260" height="260" />
+        <p class="quiz__loading" id="quiz-loading">Loading a Pokemon&hellip;</p>
+      </div>
+
+      <p class="quiz__hint" id="quiz-hint"></p>
+
+      <form class="quiz__form" id="quiz-form">
+        <input
+          type="text"
+          class="input"
+          id="quiz-input"
+          placeholder="Type your answer"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Your guess"
+        />
+        <button type="submit" class="btn btn--primary" id="quiz-submit">Guess</button>
+      </form>
+
+      <p class="quiz__feedback" id="quiz-feedback" role="status" aria-live="polite"></p>
+
+      <div class="quiz__actions">
+        <button type="button" class="btn btn--ghost" id="quiz-hint-btn">Hint</button>
+        <button type="button" class="btn btn--ghost" id="quiz-skip">Skip</button>
+        <button type="button" class="btn btn--primary" id="quiz-next" hidden>Next Pokemon</button>
+      </div>
+    </dialog>
+  </body>
+</html>

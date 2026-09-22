@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pokedex-pokeapi
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: POKEAPI_BASE_URL
+        value: https://pokeapi.co/api/v2
+      - key: CACHE_TTL_SECONDS
+        value: "604800"
+      - key: POKEAPI_CONCURRENCY
+        value: "10"

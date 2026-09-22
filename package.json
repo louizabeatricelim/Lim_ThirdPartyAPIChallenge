@@ -1,0 +1,26 @@
+{
+  "name": "lim-thirdparty-api-challenge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full stack Pokedex built on PokeAPI v2 - Express backend with caching, vanilla HTML/CSS/JS frontend.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "pokeapi",
+    "pokedex",
+    "express",
+    "itcc14"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
